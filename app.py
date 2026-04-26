@@ -1,75 +1,75 @@
 
 import streamlit as st
 import joblib
-import re
 
-# -------------------- LOAD MODEL --------------------
+# ---------------- LOAD ----------------
 @st.cache_resource
-def load_artifacts():
-    model = joblib.load("sentiment_model.pkl")
-    tfidf = joblib.load("tfidf.pkl")
-    return model, tfidf
+def load_model():
+    pipeline = joblib.load("nlp_pipeline.pkl")
+    le = joblib.load("label_encoder.pkl")
+    return pipeline, le
 
-model, tfidf = load_artifacts()
+pipeline, le = load_model()
 
-# -------------------- CLEAN FUNCTION --------------------
-def clean_text(text):
-    text = str(text).lower()
-    text = re.sub(r'[^a-zA-Z]', ' ', text)
-    return text
+# ---------------- CONFIG ----------------
+st.set_page_config(page_title="AI Sentiment Analyzer", page_icon="🤖", layout="centered")
 
-# -------------------- PAGE CONFIG --------------------
-st.set_page_config(page_title="Sentiment Analyzer", layout="centered")
+# ---------------- CUSTOM CSS ----------------
+st.markdown("""
+<style>
+.big-title {
+    font-size:40px !important;
+    font-weight:700;
+    text-align:center;
+    color:#4CAF50;
+}
+.sub-text {
+    text-align:center;
+    color:gray;
+    margin-bottom:20px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# -------------------- UI --------------------
-st.title("💬 Sentiment Analyzer (NLP)")
-st.markdown("Enter a review and get sentiment with confidence")
+# ---------------- TITLE ----------------
+st.markdown('<div class="big-title">🤖 AI Sentiment Analyzer</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-text">Analyze text sentiment with confidence</div>', unsafe_allow_html=True)
 
-user_input = st.text_area("✍️ Write your review:", height=150)
+# ---------------- INPUT ----------------
+user_input = st.text_area("✍️ Enter your review:", height=150)
 
-col1, col2 = st.columns(2)
+# ---------------- BUTTON ----------------
+if st.button("🚀 Analyze"):
 
-with col1:
-    analyze = st.button("🚀 Analyze")
-
-with col2:
-    clear = st.button("🧹 Clear")
-
-if clear:
-    st.experimental_rerun()
-
-# -------------------- PREDICTION --------------------
-if analyze and user_input.strip() != "":
-
-    text = clean_text(user_input)
-    vector = tfidf.transform([text]).toarray()
-
-    pred = model.predict(vector)[0]
-    prob = model.predict_proba(vector)[0]
-    confidence = float(max(prob))
-
-    st.divider()
-    st.subheader("📊 Result")
-
-    # RESULT DISPLAY
-    if pred == 1:
-        st.success(f"Positive 🙂  | Confidence: {confidence:.2f}")
+    if user_input.strip() == "":
+        st.warning("⚠️ Please enter some text")
     else:
-        st.error(f"Negative 😡  | Confidence: {confidence:.2f}")
+        pred = pipeline.predict([user_input])[0]
+        prob = pipeline.predict_proba([user_input])[0]
+        confidence = max(prob)
 
-    # PROGRESS BAR
-    st.progress(int(confidence * 100))
+        label = le.inverse_transform([pred])[0]
 
-    # EXTRA INSIGHT
-    st.subheader("🧠 Insight")
+        st.divider()
+        st.subheader("📊 Result")
 
-    if confidence < 0.6:
-        st.warning("Model is unsure about this prediction.")
-    elif confidence < 0.8:
-        st.info("Moderate confidence prediction.")
-    else:
-        st.success("High confidence prediction.")
+        # RESULT DISPLAY
+        if label == "positive":
+            st.success(f"😊 POSITIVE ({confidence:.2f})")
+        else:
+            st.error(f"😡 NEGATIVE ({confidence:.2f})")
 
-# -------------------- FOOTER --------------------
-st.divider()
-st.caption("Built with ❤️ using Machine Learning + NLP")
+        # CONFIDENCE BAR
+        st.progress(int(confidence * 100))
+
+        # INSIGHT
+        if confidence < 0.6:
+            st.warning("⚠️ Mixed or unclear sentiment")
+        elif confidence < 0.8:
+            st.info("ℹ️ Moderate confidence")
+        else:
+            st.success("🔥 High confidence")
+
+# ---------------- FOOTER ----------------
+st.markdown("---")
+st.caption("🚀 Built with NLP + Machine Learning by You")
