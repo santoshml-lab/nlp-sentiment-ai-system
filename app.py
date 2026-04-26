@@ -1,29 +1,31 @@
 
 import streamlit as st
-import joblib
+from transformers import pipeline
 
-# ---------------- LOAD ----------------
+# ---------------- LOAD MODEL ----------------
 @st.cache_resource
 def load_model():
-    pipeline = joblib.load("nlp_pipeline.pkl")
-    le = joblib.load("label_encoder.pkl")
-    return pipeline, le
+    return pipeline("sentiment-analysis")
 
-pipeline, le = load_model()
+classifier = load_model()
 
-# ---------------- CONFIG ----------------
-st.set_page_config(page_title="AI Sentiment Analyzer", page_icon="🤖", layout="centered")
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(
+    page_title="AI Sentiment Analyzer",
+    page_icon="🤖",
+    layout="centered"
+)
 
-# ---------------- CUSTOM CSS ----------------
+# ---------------- STYLE ----------------
 st.markdown("""
 <style>
-.big-title {
-    font-size:40px !important;
+.title {
+    font-size:36px;
     font-weight:700;
     text-align:center;
     color:#4CAF50;
 }
-.sub-text {
+.subtitle {
     text-align:center;
     color:gray;
     margin-bottom:20px;
@@ -32,8 +34,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- TITLE ----------------
-st.markdown('<div class="big-title">🤖 AI Sentiment Analyzer</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-text">Analyze text sentiment with confidence</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">🤖 AI Sentiment Analyzer</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Powered by BERT (Transformers)</div>', unsafe_allow_html=True)
 
 # ---------------- INPUT ----------------
 user_input = st.text_area("✍️ Enter your review:", height=150)
@@ -44,27 +46,27 @@ if st.button("🚀 Analyze"):
     if user_input.strip() == "":
         st.warning("⚠️ Please enter some text")
     else:
-        pred = pipeline.predict([user_input])[0]
-        prob = pipeline.predict_proba([user_input])[0]
-        confidence = max(prob)
-
-        label = le.inverse_transform([pred])[0]
+        result = classifier(user_input)[0]
+        label = result['label']
+        confidence = result['score']
 
         st.divider()
         st.subheader("📊 Result")
 
         # RESULT DISPLAY
-        if label == "positive":
+        if label == "POSITIVE":
             st.success(f"😊 POSITIVE ({confidence:.2f})")
+            st.write("Glad you liked it! 🎉")
         else:
             st.error(f"😡 NEGATIVE ({confidence:.2f})")
+            st.write("Sorry to hear that 😔")
 
         # CONFIDENCE BAR
         st.progress(int(confidence * 100))
 
-        # INSIGHT
+        # SMART INSIGHT
         if confidence < 0.6:
-            st.warning("⚠️ Mixed or unclear sentiment")
+            st.warning("⚠️ Model is unsure (ambiguous text)")
         elif confidence < 0.8:
             st.info("ℹ️ Moderate confidence")
         else:
@@ -72,4 +74,4 @@ if st.button("🚀 Analyze"):
 
 # ---------------- FOOTER ----------------
 st.markdown("---")
-st.caption("🚀 Built with NLP + Machine Learning by You")
+st.caption("🚀 Built using Transformers (BERT)")
