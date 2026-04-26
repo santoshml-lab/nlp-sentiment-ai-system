@@ -1,6 +1,8 @@
 
 import streamlit as st
 from transformers import pipeline
+import random
+import pandas as pd
 
 # ---------------- LOAD MODEL ----------------
 @st.cache_resource
@@ -9,69 +11,83 @@ def load_model():
 
 classifier = load_model()
 
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(
-    page_title="AI Sentiment Analyzer",
-    page_icon="🤖",
-    layout="centered"
-)
+# ---------------- SESSION STATE ----------------
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-# ---------------- STYLE ----------------
-st.markdown("""
-<style>
-.title {
-    font-size:36px;
-    font-weight:700;
-    text-align:center;
-    color:#4CAF50;
-}
-.subtitle {
-    text-align:center;
-    color:gray;
-    margin-bottom:20px;
-}
-</style>
-""", unsafe_allow_html=True)
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="AI Sentiment Pro+", page_icon="🤖")
 
 # ---------------- TITLE ----------------
-st.markdown('<div class="title">🤖 AI Sentiment Analyzer</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Powered by BERT (Transformers)</div>', unsafe_allow_html=True)
+st.title("🤖 AI Sentiment Pro+")
+st.caption("Advanced AI Text Intelligence System")
 
 # ---------------- INPUT ----------------
-user_input = st.text_area("✍️ Enter your review:", height=150)
+user_input = st.text_area("✍️ Enter your text:")
+
+# ---------------- EMOJI SLIDER ----------------
+emoji_level = st.slider("🎯 Mood Intensity", 0, 10, 5)
 
 # ---------------- BUTTON ----------------
 if st.button("🚀 Analyze"):
 
     if user_input.strip() == "":
-        st.warning("⚠️ Please enter some text")
+        st.warning("⚠️ Please enter text")
     else:
         result = classifier(user_input)[0]
         label = result['label']
         confidence = result['score']
 
-        st.divider()
+        # Save history
+        st.session_state.history.append({
+            "text": user_input,
+            "label": label,
+            "confidence": round(confidence,2)
+        })
+
+        # ---------------- RESULT ----------------
         st.subheader("📊 Result")
 
-        # RESULT DISPLAY
         if label == "POSITIVE":
             st.success(f"😊 POSITIVE ({confidence:.2f})")
-            st.write("Glad you liked it! 🎉")
         else:
             st.error(f"😡 NEGATIVE ({confidence:.2f})")
-            st.write("Sorry to hear that 😔")
 
-        # CONFIDENCE BAR
         st.progress(int(confidence * 100))
 
-        # SMART INSIGHT
-        if confidence < 0.6:
-            st.warning("⚠️ Model is unsure (ambiguous text)")
-        elif confidence < 0.8:
-            st.info("ℹ️ Moderate confidence")
+        # ---------------- MOOD RESPONSE ----------------
+        if emoji_level > 7:
+            st.write("🔥 Strong emotional tone detected!")
+        elif emoji_level > 4:
+            st.write("🙂 Moderate tone")
         else:
-            st.success("🔥 High confidence")
+            st.write("😐 Neutral tone")
+
+# ---------------- HISTORY ----------------
+st.subheader("🕘 Analysis History")
+
+if len(st.session_state.history) > 0:
+    df = pd.DataFrame(st.session_state.history)
+    st.dataframe(df)
+
+    # ---------------- CHART ----------------
+    st.subheader("📈 Sentiment Distribution")
+
+    chart_data = df["label"].value_counts()
+    st.bar_chart(chart_data)
+
+    # ---------------- DOWNLOAD ----------------
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "📥 Download Report",
+        csv,
+        "sentiment_report.csv",
+        "text/csv"
+    )
+
+else:
+    st.info("No history yet")
 
 # ---------------- FOOTER ----------------
 st.markdown("---")
-st.caption("🚀 Built using Transformers (BERT)")
+st.caption("🚀 Built with AI | Premium Version")
